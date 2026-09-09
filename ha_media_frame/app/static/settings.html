@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0d0c">
+  <title>HA Media Frame Settings</title>
+  <link rel="stylesheet" href="/settings.css?v=1.2.5">
+  <script src="/settings.js?v=1.2.5" defer></script>
+</head>
+<body>
+  <main class="page-shell">
+    <header>
+      <div>
+        <p class="eyebrow">HOME ASSISTANT · LOCAL</p>
+        <h1>HA Media Frame</h1>
+        <p class="lede">Photos and silent videos from your HA-mounted Unraid share.</p>
+      </div>
+      <a class="screen-button" href="/" target="_blank" rel="noopener">Open screen</a>
+    </header>
+
+    <form id="settings-form">
+      <section class="card">
+        <div class="section-heading">
+          <div><span>01</span><h2>Media source</h2></div>
+          <p>Folders are read-only and may include any number of subfolders.</p>
+        </div>
+
+        <label class="field full">
+          <span>HA media folder</span>
+          <input id="media-path" name="media_path" list="media-folders" value="/media" autocomplete="off" required>
+          <datalist id="media-folders"></datalist>
+          <small>For example: /media/UnraidMedia/Family Photos</small>
+        </label>
+
+        <div class="field-grid">
+          <label class="field">
+            <span>Photo duration</span>
+            <div class="unit-input"><input name="photo_seconds" type="number" min="2" max="86400" step="1" required><b>seconds</b></div>
+          </label>
+          <label class="field">
+            <span>Video duration</span>
+            <div class="unit-input"><input name="video_seconds" type="number" min="0" max="86400" step="1" required><b>seconds</b></div>
+            <small>Maximum time for each play. Set to 0 to play the complete video.</small>
+          </label>
+          <label class="field">
+            <span>Video repeats</span>
+            <div class="unit-input"><input name="video_repeats" type="number" min="1" max="100" step="1" required><b>plays</b></div>
+            <small>Total plays per video. The default 3 plays each video three times.</small>
+          </label>
+          <label class="field">
+            <span>Image/video fit</span>
+            <select name="fit">
+              <option value="contain">Contain — show complete media</option>
+              <option value="cover">Cover — fill and crop</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Fade duration</span>
+            <div class="unit-input"><input name="transition_seconds" type="number" min="0" max="10" step="0.1" required><b>seconds</b></div>
+          </label>
+          <label class="field">
+            <span>Check for new files</span>
+            <div class="unit-input"><input name="scan_seconds" type="number" min="10" max="3600" step="1" required><b>seconds</b></div>
+          </label>
+          <label class="toggle-row">
+            <span><b>Shuffle playback</b><small>Turn off for alphabetical order.</small></span>
+            <input name="shuffle" type="checkbox" role="switch">
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div><span>02</span><h2>Screen overlays</h2></div>
+          <p>Styled to match the linked DAKboard screen.</p>
+        </div>
+
+        <div class="toggle-stack">
+          <label class="toggle-row">
+            <span><b>Show clock and date</b><small>Uses the Fully Kiosk tablet's local time.</small></span>
+            <input name="show_clock" type="checkbox" role="switch">
+          </label>
+          <label class="toggle-row">
+            <span><b>Show Home Assistant weather</b><small>Current conditions plus up to four daily forecasts.</small></span>
+            <input id="show-weather" name="show_weather" type="checkbox" role="switch">
+          </label>
+        </div>
+
+        <label id="weather-field" class="field full weather-field">
+          <span>Weather entity</span>
+          <select id="weather-entity" name="weather_entity">
+            <option value="">Select a weather entity</option>
+          </select>
+          <small id="weather-help">Entities are loaded directly from this Home Assistant instance.</small>
+        </label>
+      </section>
+
+      <section class="card compact-card">
+        <div class="section-heading">
+          <div><span>03</span><h2>Fully Kiosk screensaver JSON</h2></div>
+        </div>
+        <div class="url-option">
+          <span>Contain — entire image/video with black bars</span>
+          <div class="copy-row json-copy-row">
+            <textarea id="contain-playlist-json" class="playlist-json" readonly spellcheck="false" aria-label="Fully Kiosk contain screensaver playlist JSON"></textarea>
+            <button class="secondary copy-value" type="button" data-copy-target="contain-playlist-json">Copy JSON</button>
+          </div>
+        </div>
+        <div class="url-option">
+          <span>Cover — fill the screen and crop edges</span>
+          <div class="copy-row json-copy-row">
+            <textarea id="cover-playlist-json" class="playlist-json" readonly spellcheck="false" aria-label="Fully Kiosk cover screensaver playlist JSON"></textarea>
+            <button class="secondary copy-value" type="button" data-copy-target="cover-playlist-json">Copy JSON</button>
+          </div>
+        </div>
+        <p class="hint">Paste the complete value into Fully Kiosk → Screensaver → Screensaver Playlist (JSON). Do not paste it into Screensaver Wallpaper URL.</p>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div><span>04</span><h2>Video compatibility</h2></div>
+          <p>Recommended settings for dependable silent playback in Android WebView.</p>
+        </div>
+        <div class="compatibility-grid">
+          <div class="compatibility-block">
+            <h3>Fully Kiosk</h3>
+            <ul>
+              <li>Enable Autoplay: on</li>
+              <li>Enable JavaScript: on</li>
+              <li>Enable Fullscreen Videos: off</li>
+              <li>Android System WebView: current version</li>
+            </ul>
+          </div>
+          <div class="compatibility-block">
+            <h3>Safest video file</h3>
+            <ul>
+              <li>MP4 container with H.264 AVC video</li>
+              <li>8-bit YUV 4:2:0, 1080p or lower, 30 fps or lower</li>
+              <li>Fast-start metadata; no audio track is preferred</li>
+              <li>Avoid HEVC/H.265, 10-bit HDR, Dolby Vision and unusual MOV files</li>
+            </ul>
+          </div>
+        </div>
+        <div class="command-block">
+          <span>FFmpeg compatibility conversion</span>
+          <div class="copy-row">
+            <textarea id="ffmpeg-command" class="command-value" readonly spellcheck="false">ffmpeg -i input.mov -map 0:v:0 -vf "scale=1920:1080:force_original_aspect_ratio=decrease:force_divisible_by=2,format=yuv420p" -r 30 -c:v libx264 -profile:v main -level:v 4.1 -tag:v avc1 -crf 22 -preset medium -maxrate 8M -bufsize 16M -movflags +faststart -an output.mp4</textarea>
+            <button class="secondary copy-value" type="button" data-copy-target="ffmpeg-command">Copy command</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="actions">
+        <div id="form-status" role="status" aria-live="polite"></div>
+        <div>
+          <button id="rescan" class="secondary" type="button">Rescan now</button>
+          <button type="submit">Save settings</button>
+        </div>
+      </footer>
+    </form>
+  </main>
+</body>
+</html>

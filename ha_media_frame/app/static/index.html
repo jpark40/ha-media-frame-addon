@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>HA Media Frame</title>
+  <link rel="stylesheet" href="/style.css?v=1.2.5">
+  <script src="/app.js?v=1.2.5" defer></script>
+</head>
+<body>
+  <main id="screen" aria-live="off">
+    <div id="media-stage" aria-label="Photo and video slideshow">
+      <div class="media-slot active" data-slot="0"></div>
+      <div class="media-slot" data-slot="1"></div>
+    </div>
+    <div id="preload-bin" class="preload-bin" aria-hidden="true"></div>
+
+    <div class="edge-shade left" aria-hidden="true"></div>
+    <div class="edge-shade right" aria-hidden="true"></div>
+
+    <section id="clock-panel" class="clock-panel">
+      <div class="clock-line"><span id="clock-time">--:--</span><small id="clock-period"></small></div>
+      <div id="clock-weekday">&nbsp;</div>
+      <div id="clock-date">&nbsp;</div>
+    </section>
+
+    <section id="weather-panel" class="weather-panel" aria-label="Weather" hidden>
+      <div class="weather-current">
+        <span id="weather-temperature">--°</span>
+        <span id="weather-icon" class="weather-icon">◌</span>
+      </div>
+      <div id="weather-detail" class="weather-detail"></div>
+      <div id="forecast-list" class="forecast-list"></div>
+    </section>
+
+    <section id="empty-state" class="empty-state" hidden>
+      <p>HA MEDIA FRAME</p>
+      <h1>No photos or videos found</h1>
+      <span>Open settings and choose your HA-mounted Unraid media folder.</span>
+      <a href="/settings">Open settings</a>
+    </section>
+
+    <div id="status" class="status" role="status" hidden></div>
+    <a id="settings-link" class="settings-link" href="/settings" aria-label="Open media frame settings">⚙</a>
+  </main>
+</body>
+</html>
