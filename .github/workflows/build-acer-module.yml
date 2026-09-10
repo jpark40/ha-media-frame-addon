@@ -1,0 +1,87 @@
+name: Build Acer HAOS kernel module
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-acer-module.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev dwarves curl xz-utils kmod
+
+      - name: Download Linux and HAOS config
+        env:
+          KERNEL_VERSION: '6.18.39'
+          HAOS_VERSION: '18.2'
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 3 "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-${KERNEL_VERSION}.tar.xz" -o linux.tar.xz
+          tar -xJf linux.tar.xz
+          mkdir -p haos-config
+          base="https://raw.githubusercontent.com/home-assistant/operating-system/${HAOS_VERSION}"
+          curl -fL --retry 3 "$base/buildroot-external/kernel/v6.18.y/haos.config" -o haos-config/01-haos.config
+          curl -fL --retry 3 "$base/buildroot-external/kernel/v6.18.y/docker.config" -o haos-config/02-docker.config
+          curl -fL --retry 3 "$base/buildroot-external/kernel/v6.18.y/device-support.config" -o haos-config/03-device-support.config
+          curl -fL --retry 3 "$base/buildroot-external/kernel/v6.18.y/device-support-wireless.config" -o haos-config/04-device-support-wireless.config
+          curl -fL --retry 3 "$base/buildroot-external/kernel/v6.18.y/device-support-wireless-pci.config" -o haos-config/05-device-support-wireless-pci.config
+          curl -fL --retry 3 "$base/buildroot-external/kernel/v6.18.y/device-support-pci.config" -o haos-config/06-device-support-pci.config
+          curl -fL --retry 3 "$base/buildroot-external/board/pc/generic-x86-64/kernel.config" -o haos-config/07-generic-x86-64.config
+
+      - name: Build matching HAOS kernel and Module.symvers
+        env:
+          KERNEL_VERSION: '6.18.39'
+        run: |
+          set -euxo pipefail
+          cd "linux-${KERNEL_VERSION}"
+          make x86_64_defconfig
+          scripts/kconfig/merge_config.sh -m .config ../haos-config/*.config
+          make olddefconfig
+          test "$(make -s kernelrelease)" = "${KERNEL_VERSION}-haos"
+          grep '^CONFIG_MODVERSIONS=y' .config
+          make -j"$(nproc)"
+          test -s Module.symvers
+
+      - name: Build acer-wmi-battery module
+        env:
+          KERNEL_VERSION: '6.18.39'
+          ACER_WMI_COMMIT: '08d16e64a3db4a94717c5ed6c93d1b3857f96916'
+        run: |
+          set -euxo pipefail
+          mkdir -p acer-module
+          curl -fL --retry 3 "https://raw.githubusercontent.com/frederik-h/acer-wmi-battery/${ACER_WMI_COMMIT}/acer-wmi-battery.c" -o acer-module/acer-wmi-battery.c
+          printf '%s\n' 'obj-m += acer-wmi-battery.o' > acer-module/Makefile
+          make -C "linux-${KERNEL_VERSION}" M="$PWD/acer-module" modules
+          test -s acer-module/acer-wmi-battery.ko
+          modinfo acer-module/acer-wmi-battery.ko
+          test "$(modinfo -F vermagic acer-module/acer-wmi-battery.ko | awk '{print $1}')" = "${KERNEL_VERSION}-haos"
+
+      - name: Commit prebuilt module
+        env:
+          KERNEL_VERSION: '6.18.39'
+        run: |
+          set -euxo pipefail
+          dest="acer_battery_80/modules/${KERNEL_VERSION}-haos"
+          mkdir -p "$dest"
+          cp acer-module/acer-wmi-battery.ko "$dest/acer-wmi-battery.ko"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$dest/acer-wmi-battery.ko"
+          if git diff --cached --quiet; then
+            echo 'Module is unchanged.'
+            exit 0
+          fi
+          git commit -m "Prebuild acer-wmi-battery for HAOS 6.18.39"
+          git push
