@@ -1,14 +1,18 @@
 #!/usr/bin/with-contenv bashio
 # Acer Battery 80% HAOS add-on
-# Version: 0.1.3
+# Version: 0.2.0
 set -Eeuo pipefail
 
-ADDON_VERSION="0.1.3"
+ADDON_VERSION="0.2.0"
 EXPECTED_KERNEL="6.18.39-haos"
 GUID="79772EC5-04B1-4BFD-843C-61E7F77B6CC9"
 MODULE="/opt/acer-wmi-battery/acer-wmi-battery.ko"
 SYSFS_DRIVER="/sys/bus/wmi/drivers/acer-wmi-battery"
 HEALTH_MODE_FILE="${SYSFS_DRIVER}/health_mode"
+BATTERY="/sys/class/power_supply/BAT0"
+HA_ENTITY="sensor.acer_s7_battery_level"
+POLL_SECONDS=60
+PUBLISHED_ONCE=0
 
 show_kernel_diag() {
     local out
@@ -23,12 +27,53 @@ show_kernel_diag() {
 }
 
 show_battery() {
-    if [[ -r /sys/class/power_supply/BAT0/capacity ]]; then
+    if [[ -r "${BATTERY}/capacity" ]]; then
         local capacity status
-        capacity="$(cat /sys/class/power_supply/BAT0/capacity)"
-        status="$(cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo unknown)"
+        capacity="$(cat "${BATTERY}/capacity")"
+        status="$(cat "${BATTERY}/status" 2>/dev/null || echo unknown)"
         bashio::log.info "Battery capacity: ${capacity}% (${status})"
     fi
+}
+
+publish_battery() {
+    [[ -r "${BATTERY}/capacity" ]] || return 1
+    [[ -n "${SUPERVISOR_TOKEN:-}" ]] || return 1
+
+    local capacity status charge_now charge_full charge_full_design payload
+    capacity="$(cat "${BATTERY}/capacity")"
+    status="$(cat "${BATTERY}/status" 2>/dev/null || echo unknown)"
+    charge_now="$(cat "${BATTERY}/charge_now" 2>/dev/null || echo 0)"
+    charge_full="$(cat "${BATTERY}/charge_full" 2>/dev/null || echo 0)"
+    charge_full_design="$(cat "${BATTERY}/charge_full_design" 2>/dev/null || echo 0)"
+
+    payload=$(printf '{"state":"%s","attributes":{"friendly_name":"Acer S7 Battery","device_class":"battery","unit_of_measurement":"%%","state_class":"measurement","status":"%s","charge_now_uAh":%s,"charge_full_uAh":%s,"charge_full_design_uAh":%s}}' \
+        "${capacity}" "${status}" "${charge_now}" "${charge_full}" "${charge_full_design}")
+
+    if curl --silent --show-error --fail --max-time 10 \
+        -X POST \
+        -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "${payload}" \
+        "http://supervisor/core/api/states/${HA_ENTITY}" >/dev/null; then
+        if [[ ${PUBLISHED_ONCE} -eq 0 ]]; then
+            bashio::log.info "Publishing battery level to Home Assistant as ${HA_ENTITY} every ${POLL_SECONDS}s."
+            PUBLISHED_ONCE=1
+        fi
+        return 0
+    fi
+
+    return 1
+}
+
+monitor_battery() {
+    show_battery
+    bashio::log.info "Starting battery monitor."
+    while true; do
+        if ! publish_battery && [[ ${PUBLISHED_ONCE} -eq 0 ]]; then
+            bashio::log.warning "Battery sensor has not reached Home Assistant yet; will retry."
+        fi
+        sleep "${POLL_SECONDS}"
+    done
 }
 
 bashio::log.info "Acer Battery 80% v${ADDON_VERSION}"
@@ -97,9 +142,8 @@ if grep -q '^acer_wmi_battery ' /proc/modules 2>/dev/null && [[ -e "${HEALTH_MOD
         exit 1
     fi
     bashio::log.info "Health mode verified: ${AFTER}"
-    show_battery
     bashio::log.info "Acer ~80% battery charge limit is ${LABEL}."
-    exit 0
+    monitor_battery
 fi
 
 # First try the upstream behavior: SET health mode, query status, register the
@@ -129,9 +173,8 @@ if [[ ${NORMAL_RC} -eq 0 ]]; then
             exit 1
         fi
         bashio::log.info "Health mode verified: ${AFTER}"
-        show_battery
         bashio::log.info "Acer ~80% battery charge limit is ${LABEL}."
-        exit 0
+        monitor_battery
     fi
 
     bashio::log.warning "Module loaded normally but no health_mode sysfs file appeared."
@@ -144,9 +187,6 @@ show_kernel_diag
 
 # Older Acer firmware can expose the correct battery-health GUID and accept
 # method 21 (SET) while method 20 (GET status) uses an incompatible response.
-# The patched module's set_only=1 path treats a successful SET as success and
-# deliberately skips the GET/status registration that caused the old add-on to
-# return I/O error.
 bashio::log.info "Trying older-firmware compatibility mode (set_only=1)..."
 set +e
 insmod "${MODULE}" enable_health_mode="${DESIRED}" set_only=1
@@ -162,10 +202,9 @@ fi
 
 bashio::log.info "Firmware accepted the health-mode SET request in compatibility mode."
 bashio::log.warning "This older-firmware path cannot read the setting back through method 20, so software verification is unavailable."
-show_battery
 if [[ "${DESIRED}" == "1" ]]; then
     bashio::log.info "Requested Acer ~80% battery health mode: ${LABEL}."
-    bashio::log.info "Verify behavior by discharging below 80%, reconnecting AC, and confirming charging stops around 80%."
 else
     bashio::log.info "Requested Acer battery health mode: ${LABEL}."
 fi
+monitor_battery
