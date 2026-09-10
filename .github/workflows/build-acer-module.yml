@@ -58,7 +58,7 @@ jobs:
             exit 1
           fi
 
-      - name: Build acer-wmi-battery module
+      - name: Build acer-wmi-battery module with HAOS compatibility fallback
         env:
           KERNEL_VERSION: '6.18.39'
           ACER_WMI_COMMIT: '08d16e64a3db4a94717c5ed6c93d1b3857f96916'
@@ -66,11 +66,40 @@ jobs:
           set -euxo pipefail
           mkdir -p acer-module
           curl -fL --retry 3 "https://raw.githubusercontent.com/frederik-h/acer-wmi-battery/${ACER_WMI_COMMIT}/acer-wmi-battery.c" -o acer-module/acer-wmi-battery.c
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('acer-module/acer-wmi-battery.c')
+          s = p.read_text()
+
+          old = '''static short enable_health_mode = -1;\n\nmodule_param(enable_health_mode, short, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);'''
+          new = '''static short enable_health_mode = -1;\nstatic bool set_only;\nstatic bool wmi_driver_registered;\n\nmodule_param(enable_health_mode, short, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);\nmodule_param(set_only, bool, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);\nMODULE_PARM_DESC(set_only,\n\t\"Apply enable_health_mode and skip the firmware status-query/driver registration. Useful on older Acer firmware where SET works but GET status is incompatible.\");'''
+          if old not in s:
+              raise SystemExit('parameter patch anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''\tif (enable_health_mode >= 0) {\n\t\tacpi_status status;\n\t\tstatus = set_battery_health_control(HEALTH_MODE,\n\t\t\t\t\t\t    enable_health_mode);\n\n\t\tif (ACPI_FAILURE(status))\n\t\t\treturn -EIO;\n\t}\n\n\tif (ACPI_FAILURE(init_state()))\n\t\treturn -EIO;\n\n\treturn wmi_driver_register(&acer_wmi_battery_driver);'''
+          new = '''\tif (enable_health_mode >= 0) {\n\t\tacpi_status status;\n\t\tstatus = set_battery_health_control(HEALTH_MODE,\n\t\t\t\t\t\t    enable_health_mode);\n\n\t\tif (ACPI_FAILURE(status))\n\t\t\treturn -EIO;\n\n\t\tif (set_only) {\n\t\t\tpr_info(\"health-mode SET accepted by firmware; status query skipped\\n\");\n\t\t\treturn 0;\n\t\t}\n\t}\n\n\tif (ACPI_FAILURE(init_state()))\n\t\treturn -EIO;\n\n\t{\n\t\tint ret = wmi_driver_register(&acer_wmi_battery_driver);\n\t\tif (!ret)\n\t\t\twmi_driver_registered = true;\n\t\treturn ret;\n\t}'''
+          if old not in s:
+              raise SystemExit('init patch anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''static void __exit acer_battery_exit(void)\n{\n\twmi_driver_unregister(&acer_wmi_battery_driver);\n}'''
+          new = '''static void __exit acer_battery_exit(void)\n{\n\tif (wmi_driver_registered)\n\t\twmi_driver_unregister(&acer_wmi_battery_driver);\n}'''
+          if old not in s:
+              raise SystemExit('exit patch anchor not found')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s)
+          PY
+
+          grep -n 'set_only' acer-module/acer-wmi-battery.c
           printf '%s\n' 'obj-m += acer-wmi-battery.o' > acer-module/Makefile
           make -C "linux-${KERNEL_VERSION}" M="$PWD/acer-module" KBUILD_MODPOST_WARN=1 modules
           test -s acer-module/acer-wmi-battery.ko
           modinfo acer-module/acer-wmi-battery.ko
           test "$(modinfo -F vermagic acer-module/acer-wmi-battery.ko | awk '{print $1}')" = "${KERNEL_VERSION}-haos"
+          modinfo -p acer-module/acer-wmi-battery.ko | grep -q '^set_only:'
 
       - name: Commit prebuilt module
         env:
@@ -87,5 +116,5 @@ jobs:
             echo 'Module is unchanged.'
             exit 0
           fi
-          git commit -m "Prebuild acer-wmi-battery for HAOS 6.18.39"
+          git commit -m "Prebuild Acer battery module with set-only fallback"
           git push
