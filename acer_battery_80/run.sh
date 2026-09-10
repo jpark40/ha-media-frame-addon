@@ -1,9 +1,9 @@
 #!/usr/bin/with-contenv bashio
 # Acer Battery 80% HAOS add-on
-# Version: 0.2.0
+# Version: 0.2.1
 set -Eeuo pipefail
 
-ADDON_VERSION="0.2.0"
+ADDON_VERSION="0.2.1"
 EXPECTED_KERNEL="6.18.39-haos"
 GUID="79772EC5-04B1-4BFD-843C-61E7F77B6CC9"
 MODULE="/opt/acer-wmi-battery/acer-wmi-battery.ko"
@@ -39,15 +39,16 @@ publish_battery() {
     [[ -r "${BATTERY}/capacity" ]] || return 1
     [[ -n "${SUPERVISOR_TOKEN:-}" ]] || return 1
 
-    local capacity status charge_now charge_full charge_full_design payload
+    local capacity status charge_now charge_full charge_full_design last_polled payload
     capacity="$(cat "${BATTERY}/capacity")"
     status="$(cat "${BATTERY}/status" 2>/dev/null || echo unknown)"
     charge_now="$(cat "${BATTERY}/charge_now" 2>/dev/null || echo 0)"
     charge_full="$(cat "${BATTERY}/charge_full" 2>/dev/null || echo 0)"
     charge_full_design="$(cat "${BATTERY}/charge_full_design" 2>/dev/null || echo 0)"
+    last_polled="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
-    payload=$(printf '{"state":"%s","attributes":{"friendly_name":"Acer S7 Battery","device_class":"battery","unit_of_measurement":"%%","state_class":"measurement","status":"%s","charge_now_uAh":%s,"charge_full_uAh":%s,"charge_full_design_uAh":%s}}' \
-        "${capacity}" "${status}" "${charge_now}" "${charge_full}" "${charge_full_design}")
+    payload=$(printf '{"state":"%s","attributes":{"friendly_name":"Acer S7 Battery","device_class":"battery","unit_of_measurement":"%%","state_class":"measurement","status":"%s","charge_now_uAh":%s,"charge_full_uAh":%s,"charge_full_design_uAh":%s,"last_polled":"%s"}}' \
+        "${capacity}" "${status}" "${charge_now}" "${charge_full}" "${charge_full_design}" "${last_polled}")
 
     if curl --silent --show-error --fail --max-time 10 \
         -X POST \
@@ -121,14 +122,11 @@ if ! modinfo -p "${MODULE}" 2>/dev/null | grep -q '^set_only:'; then
     exit 1
 fi
 
-# If a previous set-only run left the module resident there is intentionally no
-# sysfs interface. Unload it so the requested state can be applied again.
 if grep -q '^acer_wmi_battery ' /proc/modules 2>/dev/null && [[ ! -e "${HEALTH_MODE_FILE}" ]]; then
     bashio::log.info "Removing previous set-only acer_wmi_battery instance..."
     rmmod acer_wmi_battery || true
 fi
 
-# If the fully registered driver is already present, use its sysfs control.
 if grep -q '^acer_wmi_battery ' /proc/modules 2>/dev/null && [[ -e "${HEALTH_MODE_FILE}" ]]; then
     CURRENT="$(cat "${HEALTH_MODE_FILE}" 2>/dev/null || echo unknown)"
     bashio::log.info "Driver already loaded; current health_mode: ${CURRENT}"
@@ -146,8 +144,6 @@ if grep -q '^acer_wmi_battery ' /proc/modules 2>/dev/null && [[ -e "${HEALTH_MOD
     monitor_battery
 fi
 
-# First try the upstream behavior: SET health mode, query status, register the
-# WMI driver, and expose health_mode through sysfs.
 bashio::log.info "Trying normal Acer WMI mode with enable_health_mode=${DESIRED}..."
 set +e
 insmod "${MODULE}" enable_health_mode="${DESIRED}"
@@ -185,8 +181,6 @@ fi
 bashio::log.warning "Normal mode returned I/O error (rc=${NORMAL_RC})."
 show_kernel_diag
 
-# Older Acer firmware can expose the correct battery-health GUID and accept
-# method 21 (SET) while method 20 (GET status) uses an incompatible response.
 bashio::log.info "Trying older-firmware compatibility mode (set_only=1)..."
 set +e
 insmod "${MODULE}" enable_health_mode="${DESIRED}" set_only=1
