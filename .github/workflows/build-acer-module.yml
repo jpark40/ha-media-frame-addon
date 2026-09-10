@@ -51,8 +51,8 @@ jobs:
           scripts/config --set-str LOCALVERSION '-haos'
           make olddefconfig
           grep -Fx 'CONFIG_LOCALVERSION="-haos"' .config
-          test "$(make -s kernelrelease)" = "${KERNEL_VERSION}-haos"
           make -j"$(nproc)" modules_prepare
+          test "$(make -s kernelrelease)" = "${KERNEL_VERSION}-haos"
           if grep -q '^CONFIG_MODVERSIONS=y' .config; then
             echo 'CONFIG_MODVERSIONS is enabled; a full kernel build would be required.' >&2
             exit 1
