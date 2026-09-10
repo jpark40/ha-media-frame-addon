@@ -1,9 +1,9 @@
 # Acer Battery 80% HAOS add-on
-# Version: 0.1.1
+# Version: 0.1.3
 
 FROM ghcr.io/home-assistant/base:3.24
 
-ARG BUILD_VERSION="0.1.1"
+ARG BUILD_VERSION="0.1.3"
 ARG BUILD_ARCH="amd64"
 
 LABEL \
