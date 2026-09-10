@@ -1,5 +1,5 @@
 name: "Acer Battery 80%"
-version: "0.2.0"
+version: "0.2.1"
 slug: "acer_battery_80"
 description: "Enable Acer firmware battery health mode (~80% charge limit) on HAOS and publish battery level to Home Assistant"
 url: "https://github.com/jpark40/ha-media-frame-addon"
