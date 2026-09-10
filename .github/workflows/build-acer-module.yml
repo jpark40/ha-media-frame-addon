@@ -48,9 +48,11 @@ jobs:
           cd "linux-${KERNEL_VERSION}"
           make x86_64_defconfig
           scripts/kconfig/merge_config.sh -m .config ../haos-config/*.config
+          scripts/config --set-str LOCALVERSION '-haos'
           make olddefconfig
-          test "$(make -s LOCALVERSION=-haos kernelrelease)" = "${KERNEL_VERSION}-haos"
-          make -j"$(nproc)" LOCALVERSION=-haos modules_prepare
+          grep -Fx 'CONFIG_LOCALVERSION="-haos"' .config
+          test "$(make -s kernelrelease)" = "${KERNEL_VERSION}-haos"
+          make -j"$(nproc)" modules_prepare
           if grep -q '^CONFIG_MODVERSIONS=y' .config; then
             echo 'CONFIG_MODVERSIONS is enabled; a full kernel build would be required.' >&2
             exit 1
@@ -65,7 +67,7 @@ jobs:
           mkdir -p acer-module
           curl -fL --retry 3 "https://raw.githubusercontent.com/frederik-h/acer-wmi-battery/${ACER_WMI_COMMIT}/acer-wmi-battery.c" -o acer-module/acer-wmi-battery.c
           printf '%s\n' 'obj-m += acer-wmi-battery.o' > acer-module/Makefile
-          make -C "linux-${KERNEL_VERSION}" LOCALVERSION=-haos M="$PWD/acer-module" KBUILD_MODPOST_WARN=1 modules
+          make -C "linux-${KERNEL_VERSION}" M="$PWD/acer-module" KBUILD_MODPOST_WARN=1 modules
           test -s acer-module/acer-wmi-battery.ko
           modinfo acer-module/acer-wmi-battery.ko
           test "$(modinfo -F vermagic acer-module/acer-wmi-battery.ko | awk '{print $1}')" = "${KERNEL_VERSION}-haos"
