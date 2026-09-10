@@ -1,9 +1,9 @@
 #!/usr/bin/with-contenv bashio
 # Acer Battery 80% HAOS add-on
-# Version: 0.1.0
+# Version: 0.1.1
 set -Eeuo pipefail
 
-ADDON_VERSION="0.1.0"
+ADDON_VERSION="0.1.1"
 EXPECTED_KERNEL="6.18.39-haos"
 GUID="79772EC5-04B1-4BFD-843C-61E7F77B6CC9"
 MODULE="/opt/acer-wmi-battery/acer-wmi-battery.ko"
@@ -24,11 +24,18 @@ if [[ "$(uname -r)" != "${EXPECTED_KERNEL}" ]]; then
     exit 1
 fi
 
+if bashio::config.true 'health_mode'; then
+    DESIRED="1"
+    LABEL="ENABLED"
+else
+    DESIRED="0"
+    LABEL="DISABLED"
+fi
+
 if ! ls /sys/bus/wmi/devices/ 2>/dev/null | grep -qi "^${GUID}"; then
     bashio::log.fatal "Acer battery-health WMI GUID ${GUID} was not found."
     exit 1
 fi
-
 bashio::log.info "Acer battery-health WMI GUID found."
 
 if [[ ! -f "${MODULE}" ]]; then
@@ -46,8 +53,8 @@ fi
 if grep -q '^acer_wmi_battery ' /proc/modules 2>/dev/null; then
     bashio::log.info "acer_wmi_battery is already loaded."
 else
-    bashio::log.info "Loading acer-wmi-battery kernel module..."
-    if ! insmod "${MODULE}"; then
+    bashio::log.info "Loading acer-wmi-battery with enable_health_mode=${DESIRED}..."
+    if ! insmod "${MODULE}" enable_health_mode="${DESIRED}"; then
         bashio::log.fatal "insmod failed. Check the Host log/dmesg for acer_wmi_battery messages."
         exit 1
     fi
@@ -71,19 +78,12 @@ if [[ "${CURRENT}" == "-1" ]]; then
     exit 1
 fi
 
-if bashio::config.true 'health_mode'; then
-    DESIRED="1"
-    LABEL="ENABLED"
-else
-    DESIRED="0"
-    LABEL="DISABLED"
-fi
-
 if [[ "${CURRENT}" != "${DESIRED}" ]]; then
-    bashio::log.info "Setting health_mode=${DESIRED}..."
-    printf '%s\n' "${DESIRED}" > "${HEALTH_MODE_FILE}"
-else
-    bashio::log.info "health_mode is already ${DESIRED}; no write needed."
+    bashio::log.info "Module was already loaded or firmware did not apply the requested state; setting health_mode=${DESIRED}..."
+    if ! printf '%s\n' "${DESIRED}" > "${HEALTH_MODE_FILE}"; then
+        bashio::log.fatal "Could not write ${HEALTH_MODE_FILE}. Stop/unload the module and start the add-on again to apply via module parameter."
+        exit 1
+    fi
 fi
 
 AFTER="$(cat "${HEALTH_MODE_FILE}")"
