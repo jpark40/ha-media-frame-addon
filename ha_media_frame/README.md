@@ -14,6 +14,7 @@ A local, DAKboard-style full-screen photo and video player for Home Assistant OS
 - Applies display-setting changes to an already-open screen within a few seconds.
 - Shows a DAKboard-like clock/date and optional weather data from a Home Assistant `weather.*` entity.
 - Stores settings in the app's persistent `/data` directory. Media is mounted read-only.
+- Swipe right to revisit up to 100 previously displayed photos or videos, and swipe left to move forward. A small × at the lower left exits Fully Kiosk's screensaver.
 
 ## 1. Mount the Unraid SMB share in Home Assistant
 
@@ -54,6 +55,8 @@ Open this app's settings page and copy the complete **Contain** or **Cover** pla
 
 Use the numeric Home Assistant LAN IP instead of `homeassistant.local` for the most reliable wake-up behavior. In Fully Kiosk, enable **Autoplay** and JavaScript, and disable **Fullscreen Videos** so HTML5 videos stay inside the frame page. The page itself permanently mutes every video.
 
+For the lower-left exit button, enable **Advanced Web Settings → Enable JavaScript Interface** in Fully Kiosk. Disable Fully Kiosk's own **Swipe to Navigate** if it intercepts the frame's left/right swipes.
+
 ## Timing behavior
 
 - **Photo duration:** how long each photo stays visible.
@@ -72,8 +75,8 @@ Compatibility conversion:
 
 ## Useful URLs
 
-- Screen (Contain): `http://HOME_ASSISTANT_IP:8099/?fit=contain&v=1.2.5`
-- Screen (Cover): `http://HOME_ASSISTANT_IP:8099/?fit=cover&v=1.2.5`
+- Screen (Contain): `http://HOME_ASSISTANT_IP:8099/?fit=contain&v=1.2.6`
+- Screen (Cover): `http://HOME_ASSISTANT_IP:8099/?fit=cover&v=1.2.6`
 - Settings: `http://HOME_ASSISTANT_IP:8099/settings`
 - Health check: `http://HOME_ASSISTANT_IP:8099/health`
 

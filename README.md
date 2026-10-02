@@ -33,5 +33,6 @@ If the local `/addons/ha_media_frame` copy is already installed, stop it before 
 - Shows an optional clock, date, current weather, and four-day forecast.
 - Generates ready-to-copy Fully Kiosk Screensaver Playlist JSON.
 - Persists settings across add-on upgrades.
+- Swipe back through displayed pictures and exit Fully Kiosk's screensaver from a small on-screen button.
 
 See the [HA Media Frame documentation](ha_media_frame/README.md) for setup and usage details.

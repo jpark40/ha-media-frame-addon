@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.6
+
+- Adds swipe navigation through up to 100 previously displayed photos and videos.
+- Adds a small translucent lower-left button to exit the Fully Kiosk screensaver.
+
 ## 1.2.5
 
 - Publishes HA Media Frame as an installable Home Assistant add-on repository.

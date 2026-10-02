@@ -8,6 +8,7 @@
   const clockPanel = document.getElementById("clock-panel");
   const weatherPanel = document.getElementById("weather-panel");
   const forecastList = document.getElementById("forecast-list");
+  const exitButton = document.getElementById("exit-screensaver");
   const requestedFit = new URLSearchParams(window.location.search).get("fit");
   const fitOverride = requestedFit === "contain" || requestedFit === "cover" ? requestedFit : "";
 
@@ -24,6 +25,9 @@
     preload: null,
     preloadToken: 0,
     advancing: false,
+    history: [],
+    historyIndex: -1,
+    navigationToken: 0,
   };
 
   async function getJson(url, options) {
@@ -333,11 +337,23 @@
     return (state.cursor + 1 + state.playlist.length) % state.playlist.length;
   }
 
+  function nextDisplay() {
+    if (state.historyIndex < state.history.length - 1) {
+      const historyIndex = state.historyIndex + 1;
+      const item = state.history[historyIndex];
+      return { item, index: state.playlist.findIndex((entry) => entry.url === item.url), historyIndex };
+    }
+    const index = nextPlaylistIndex();
+    return index < 0 ? null : { item: state.playlist[index], index, historyIndex: null };
+  }
+
   function startPreloadingNext() {
     if (!state.playlist.length) return null;
     discardPreload();
-    const index = nextPlaylistIndex();
-    state.preload = createPreload(state.playlist[index], index);
+    const next = nextDisplay();
+    if (!next) return null;
+    state.preload = createPreload(next.item, next.index);
+    state.preload.historyIndex = next.historyIndex;
     return state.preload;
   }
 
@@ -441,6 +457,15 @@
 
     state.cursor = preload.index;
     state.currentItem = item;
+    if (preload.historyIndex !== null && preload.historyIndex !== undefined) {
+      state.historyIndex = preload.historyIndex;
+    } else {
+      // Only media that reached the screen enters history.
+      if (state.historyIndex < state.history.length - 1) state.history.length = state.historyIndex + 1;
+      state.history.push(item);
+      if (state.history.length > 100) state.history.shift();
+      state.historyIndex = state.history.length - 1;
+    }
     state.activeSlot = targetIndex;
     state.generation += 1;
     const generation = state.generation;
@@ -465,6 +490,7 @@
     window.clearTimeout(state.timer);
     state.advancing = true;
     const preload = state.preload || startPreloadingNext();
+    const navigationToken = state.navigationToken;
     if (!preload) {
       state.advancing = false;
       return;
@@ -473,12 +499,14 @@
     try {
       await preload.ready;
     } catch {
+      if (navigationToken !== state.navigationToken) return;
       if (state.preload !== preload || preload.cancelled) {
         state.advancing = false;
         return;
       }
       state.preload = null;
-      state.cursor = preload.index;
+      if (preload.historyIndex === null) state.cursor = preload.index;
+      else state.history.splice(preload.historyIndex, 1);
       stopMediaNode(preload.node);
       preloadBin.replaceChildren();
       setStatus(`Skipped unsupported or unavailable file: ${preload.item.name}`, 5000);
@@ -488,10 +516,40 @@
       return;
     }
 
-    if (state.preload !== preload || preload.cancelled) {
+    if (navigationToken !== state.navigationToken || state.preload !== preload || preload.cancelled) {
       state.advancing = false;
       return;
     }
+    state.preload = null;
+    activatePrepared(preload);
+  }
+
+  async function showPrevious() {
+    if (state.historyIndex <= 0 || !state.playlist.length) return;
+    window.clearTimeout(state.timer);
+    const navigationToken = ++state.navigationToken;
+    state.advancing = true;
+    discardPreload();
+    const historyIndex = state.historyIndex - 1;
+    const item = state.history[historyIndex];
+    const index = state.playlist.findIndex((entry) => entry.url === item.url);
+    const preload = createPreload(item, index);
+    preload.historyIndex = historyIndex;
+    state.preload = preload;
+    try {
+      await preload.ready;
+    } catch {
+      if (navigationToken !== state.navigationToken) return;
+      state.preload = null;
+      stopMediaNode(preload.node);
+      preloadBin.replaceChildren();
+      state.advancing = false;
+      setStatus(`Previous file is unavailable: ${item.name}`, 5000);
+      startPreloadingNext();
+      scheduleNext(Number(state.config.photo_seconds) * 1000, state.generation);
+      return;
+    }
+    if (navigationToken !== state.navigationToken || state.preload !== preload) return;
     state.preload = null;
     activatePrepared(preload);
   }
@@ -502,6 +560,8 @@
       if (result.error) setStatus(result.error);
       const items = Array.isArray(result.items) ? result.items : [];
       if (!items.length) {
+        state.navigationToken += 1;
+        state.advancing = false;
         discardPreload();
         window.clearTimeout(state.timer);
         state.playlist = [];
@@ -519,6 +579,9 @@
       state.cursor = currentUrl
         ? state.playlist.findIndex((item) => item.url === currentUrl)
         : -1;
+      // Retain the order of pictures actually shown across a media rescan.
+      state.navigationToken += 1;
+      state.advancing = false;
       discardPreload();
       startPreloadingNext();
       if (initial || !state.currentItem) advanceToPreloaded();
@@ -557,6 +620,29 @@
 
   ["pointermove", "pointerdown", "touchstart", "keydown"].forEach((eventName) => {
     window.addEventListener(eventName, showControls, { passive: true });
+  });
+  let swipeStart = null;
+  const mediaStage = document.getElementById("media-stage");
+  mediaStage.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1) { swipeStart = null; return; }
+    swipeStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+  }, { passive: true });
+  mediaStage.addEventListener("touchend", (event) => {
+    if (!swipeStart || event.changedTouches.length !== 1) return;
+    const dx = event.changedTouches[0].clientX - swipeStart.x;
+    const dy = event.changedTouches[0].clientY - swipeStart.y;
+    swipeStart = null;
+    if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx > 0) showPrevious();
+    else advanceToPreloaded();
+  }, { passive: true });
+  mediaStage.addEventListener("touchcancel", () => { swipeStart = null; });
+  exitButton.addEventListener("click", () => {
+    if (window.fully && typeof window.fully.stopScreensaver === "function") {
+      window.fully.stopScreensaver();
+    } else {
+      setStatus("Enable Fully Kiosk's JavaScript Interface to exit the screensaver here.", 6500);
+    }
   });
   const resizeMedia = () => {
     if (state.config) window.requestAnimationFrame(applyDisplayConfig);
