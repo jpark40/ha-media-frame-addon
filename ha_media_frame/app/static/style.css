@@ -164,28 +164,6 @@ body.idle { cursor: none; }
 }
 body.controls-visible .settings-link { opacity: .8; pointer-events: auto; }
 
-.exit-screensaver {
-  position: fixed;
-  z-index: 6;
-  left: max(14px, env(safe-area-inset-left));
-  bottom: max(14px, env(safe-area-inset-bottom));
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  padding: 0 0 2px;
-  border: 1px solid rgba(255,255,255,.28);
-  border-radius: 50%;
-  background: rgba(0,0,0,.38);
-  color: rgba(255,255,255,.88);
-  font: 24px/1 Arial, Helvetica, sans-serif;
-  opacity: .45;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  -webkit-tap-highlight-color: transparent;
-}
-.exit-screensaver:hover, .exit-screensaver:focus-visible, body.controls-visible .exit-screensaver { opacity: .85; }
-
 @media (max-width: 760px), (max-height: 500px) {
   :root { --panel-gap: 14px; }
   .weather-panel { width: clamp(145px, 28vw, 210px); }

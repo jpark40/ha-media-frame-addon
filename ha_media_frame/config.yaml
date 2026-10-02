@@ -1,5 +1,5 @@
 name: "HA Media Frame"
-version: "1.2.7"
+version: "1.2.8"
 slug: "ha_media_frame"
 description: "DAKboard-style photo and muted-video screen for HA-mounted media"
 url: "https://github.com/jpark40/ha-media-frame-addon"

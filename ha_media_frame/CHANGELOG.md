@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.8
+
+- Removes the lower-left exit button and its Fully Kiosk JavaScript handler.
+
 ## 1.2.7
 
 - Saves the last 20 displayed photos and videos in browser storage.

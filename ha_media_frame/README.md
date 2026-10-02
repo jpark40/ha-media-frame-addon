@@ -55,7 +55,7 @@ Open this app's settings page and copy the complete **Contain** or **Cover** pla
 
 Use the numeric Home Assistant LAN IP instead of `homeassistant.local` for the most reliable wake-up behavior. In Fully Kiosk, enable **Autoplay** and JavaScript, and disable **Fullscreen Videos** so HTML5 videos stay inside the frame page. The page itself permanently mutes every video.
 
-Fully Kiosk's built-in Screensaver Playlist intercepts touch to exit, so in-page swipes and the lower-left × do not work while the page is displayed as a screensaver item. The saved item and history still restore when the screensaver page reloads. For interactive swipes, open the frame as a normal Fully Kiosk browser page; enable **Advanced Web Settings → Enable JavaScript Interface** for the × button and disable Fully's **Swipe to Navigate** if it intercepts horizontal gestures. Keep **Delete Webstorage on Auto Reload** off to preserve history across reloads.
+Fully Kiosk's built-in Screensaver Playlist intercepts touch to exit, so in-page swipes do not work while the page is displayed as a screensaver item. The saved item and history still restore when the screensaver page reloads. For interactive swipes, open the frame as a normal Fully Kiosk browser page and disable Fully's **Swipe to Navigate** if it intercepts horizontal gestures. Keep **Delete Webstorage on Auto Reload** off to preserve history across reloads.
 
 ## Timing behavior
 
@@ -75,8 +75,8 @@ Compatibility conversion:
 
 ## Useful URLs
 
-- Screen (Contain): `http://HOME_ASSISTANT_IP:8099/?fit=contain&v=1.2.7`
-- Screen (Cover): `http://HOME_ASSISTANT_IP:8099/?fit=cover&v=1.2.7`
+- Screen (Contain): `http://HOME_ASSISTANT_IP:8099/?fit=contain&v=1.2.8`
+- Screen (Cover): `http://HOME_ASSISTANT_IP:8099/?fit=cover&v=1.2.8`
 - Settings: `http://HOME_ASSISTANT_IP:8099/settings`
 - Health check: `http://HOME_ASSISTANT_IP:8099/health`
 

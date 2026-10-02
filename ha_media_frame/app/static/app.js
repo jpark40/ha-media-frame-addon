@@ -8,7 +8,6 @@
   const clockPanel = document.getElementById("clock-panel");
   const weatherPanel = document.getElementById("weather-panel");
   const forecastList = document.getElementById("forecast-list");
-  const exitButton = document.getElementById("exit-screensaver");
   const HISTORY_KEY = "haMediaFrameHistoryV1";
   const HISTORY_LIMIT = 20;
   const requestedFit = new URLSearchParams(window.location.search).get("fit");
@@ -693,13 +692,6 @@
     else advanceToPreloaded();
   }, { passive: true });
   mediaStage.addEventListener("touchcancel", () => { swipeStart = null; });
-  exitButton.addEventListener("click", () => {
-    if (window.fully && typeof window.fully.stopScreensaver === "function") {
-      window.fully.stopScreensaver();
-    } else {
-      setStatus("Enable Fully Kiosk's JavaScript Interface to exit the screensaver here.", 6500);
-    }
-  });
   const resizeMedia = () => {
     if (state.config) window.requestAnimationFrame(applyDisplayConfig);
   };
