@@ -14,7 +14,7 @@ A local, DAKboard-style full-screen photo and video player for Home Assistant OS
 - Applies display-setting changes to an already-open screen within a few seconds.
 - Shows a DAKboard-like clock/date and optional weather data from a Home Assistant `weather.*` entity.
 - Stores settings in the app's persistent `/data` directory. Media is mounted read-only.
-- Swipe right to revisit up to 100 previously displayed photos or videos, and swipe left to move forward. A small × at the lower left exits Fully Kiosk's screensaver.
+- Keeps the last 20 displayed photos or videos in browser storage and restores the most recent one when the page loads. Swipe right through history and left to move forward when the page is opened as a normal interactive browser page.
 
 ## 1. Mount the Unraid SMB share in Home Assistant
 
@@ -55,7 +55,7 @@ Open this app's settings page and copy the complete **Contain** or **Cover** pla
 
 Use the numeric Home Assistant LAN IP instead of `homeassistant.local` for the most reliable wake-up behavior. In Fully Kiosk, enable **Autoplay** and JavaScript, and disable **Fullscreen Videos** so HTML5 videos stay inside the frame page. The page itself permanently mutes every video.
 
-For the lower-left exit button, enable **Advanced Web Settings → Enable JavaScript Interface** in Fully Kiosk. Disable Fully Kiosk's own **Swipe to Navigate** if it intercepts the frame's left/right swipes.
+Fully Kiosk's built-in Screensaver Playlist intercepts touch to exit, so in-page swipes and the lower-left × do not work while the page is displayed as a screensaver item. The saved item and history still restore when the screensaver page reloads. For interactive swipes, open the frame as a normal Fully Kiosk browser page; enable **Advanced Web Settings → Enable JavaScript Interface** for the × button and disable Fully's **Swipe to Navigate** if it intercepts horizontal gestures. Keep **Delete Webstorage on Auto Reload** off to preserve history across reloads.
 
 ## Timing behavior
 
@@ -75,8 +75,8 @@ Compatibility conversion:
 
 ## Useful URLs
 
-- Screen (Contain): `http://HOME_ASSISTANT_IP:8099/?fit=contain&v=1.2.6`
-- Screen (Cover): `http://HOME_ASSISTANT_IP:8099/?fit=cover&v=1.2.6`
+- Screen (Contain): `http://HOME_ASSISTANT_IP:8099/?fit=contain&v=1.2.7`
+- Screen (Cover): `http://HOME_ASSISTANT_IP:8099/?fit=cover&v=1.2.7`
 - Settings: `http://HOME_ASSISTANT_IP:8099/settings`
 - Health check: `http://HOME_ASSISTANT_IP:8099/health`
 

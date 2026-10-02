@@ -9,6 +9,8 @@
   const weatherPanel = document.getElementById("weather-panel");
   const forecastList = document.getElementById("forecast-list");
   const exitButton = document.getElementById("exit-screensaver");
+  const HISTORY_KEY = "haMediaFrameHistoryV1";
+  const HISTORY_LIMIT = 20;
   const requestedFit = new URLSearchParams(window.location.search).get("fit");
   const fitOverride = requestedFit === "contain" || requestedFit === "cover" ? requestedFit : "";
 
@@ -332,6 +334,44 @@
     return preload;
   }
 
+  function saveHistory() {
+    try {
+      window.localStorage.setItem(HISTORY_KEY, JSON.stringify({
+        items: state.history.map((item) => item.url),
+        index: state.historyIndex,
+      }));
+    } catch {
+      // Playback continues if WebView storage is unavailable or full.
+    }
+  }
+
+  function loadHistory() {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(HISTORY_KEY));
+      if (!saved || !Array.isArray(saved.items)) return null;
+      const offset = Math.max(0, saved.items.length - HISTORY_LIMIT);
+      const items = saved.items.slice(offset).filter((url) => typeof url === "string" && url.length < 2048);
+      const index = Number.isInteger(saved.index) ? saved.index - offset : items.length - 1;
+      return { items, index };
+    } catch {
+      return null;
+    }
+  }
+
+  function reconcileHistory(urls, selectedIndex) {
+    const byUrl = new Map(state.playlist.map((item) => [item.url, item]));
+    const history = [];
+    let historyIndex = -1;
+    urls.slice(-HISTORY_LIMIT).forEach((url, index) => {
+      const item = byUrl.get(url);
+      if (!item) return;
+      history.push(item);
+      if (index <= selectedIndex) historyIndex = history.length - 1;
+    });
+    state.history = history;
+    state.historyIndex = history.length ? Math.max(0, historyIndex) : -1;
+  }
+
   function nextPlaylistIndex() {
     if (!state.playlist.length) return -1;
     return (state.cursor + 1 + state.playlist.length) % state.playlist.length;
@@ -463,9 +503,10 @@
       // Only media that reached the screen enters history.
       if (state.historyIndex < state.history.length - 1) state.history.length = state.historyIndex + 1;
       state.history.push(item);
-      if (state.history.length > 100) state.history.shift();
+      if (state.history.length > HISTORY_LIMIT) state.history.shift();
       state.historyIndex = state.history.length - 1;
     }
+    saveHistory();
     state.activeSlot = targetIndex;
     state.generation += 1;
     const generation = state.generation;
@@ -506,7 +547,11 @@
       }
       state.preload = null;
       if (preload.historyIndex === null) state.cursor = preload.index;
-      else state.history.splice(preload.historyIndex, 1);
+      else {
+        state.history.splice(preload.historyIndex, 1);
+        if (!state.currentItem) state.historyIndex = Math.max(-1, preload.historyIndex - 2);
+        saveHistory();
+      }
       stopMediaNode(preload.node);
       preloadBin.replaceChildren();
       setStatus(`Skipped unsupported or unavailable file: ${preload.item.name}`, 5000);
@@ -579,11 +624,22 @@
       state.cursor = currentUrl
         ? state.playlist.findIndex((item) => item.url === currentUrl)
         : -1;
-      // Retain the order of pictures actually shown across a media rescan.
+      const saved = initial ? loadHistory() : null;
+      if (saved) reconcileHistory(saved.items, saved.index);
+      else if (state.history.length) {
+        reconcileHistory(state.history.map((item) => item.url), state.historyIndex);
+        saveHistory();
+      }
       state.navigationToken += 1;
       state.advancing = false;
       discardPreload();
-      startPreloadingNext();
+      if (initial && state.historyIndex >= 0) {
+        const item = state.history[state.historyIndex];
+        state.preload = createPreload(item, state.playlist.findIndex((entry) => entry.url === item.url));
+        state.preload.historyIndex = state.historyIndex;
+      } else {
+        startPreloadingNext();
+      }
       if (initial || !state.currentItem) advanceToPreloaded();
     } catch (error) {
       setStatus(error.message || "Unable to load the media list");

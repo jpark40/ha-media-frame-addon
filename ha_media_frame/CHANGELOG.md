@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.7
+
+- Saves the last 20 displayed photos and videos in browser storage.
+- Restores the most recently displayed item and swipe history on page load.
+- Skips media removed from the folder and documents Fully Kiosk screensaver touch behavior.
+
 ## 1.2.6
 
 - Adds swipe navigation through up to 100 previously displayed photos and videos.
