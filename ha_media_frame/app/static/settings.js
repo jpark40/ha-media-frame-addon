@@ -7,7 +7,7 @@
   const weatherField = document.getElementById("weather-field");
   const weatherSelect = document.getElementById("weather-entity");
   const weatherHelp = document.getElementById("weather-help");
-  const releaseVersion = "1.2.9";
+  const releaseVersion = "1.3.0";
 
   function screensaverPlaylist(fit) {
     const playlist = JSON.stringify([{
@@ -57,6 +57,7 @@
       photo_seconds: Number(form.elements.photo_seconds.value),
       video_seconds: Number(form.elements.video_seconds.value),
       video_repeats: Number(form.elements.video_repeats.value),
+      history_size: Number(form.elements.history_size.value),
       fit: form.elements.fit.value,
       transition_seconds: Number(form.elements.transition_seconds.value),
       scan_seconds: Number(form.elements.scan_seconds.value),
@@ -120,6 +121,24 @@
   });
 
   weatherToggle.addEventListener("change", updateWeatherState);
+
+  document.getElementById("reset-history").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    const resetStatus = document.getElementById("history-reset-status");
+    button.disabled = true;
+    resetStatus.textContent = "Scheduling history reset…";
+    status("Scheduling history reset…");
+    try {
+      await json("/api/history/reset", { method: "POST" });
+      resetStatus.textContent = "Reset scheduled for the next screen page load.";
+      status("History reset scheduled. On its next page load, the screen starts at the first playlist item.", "success");
+    } catch (error) {
+      resetStatus.textContent = error.message || "History reset failed.";
+      status(error.message || "History reset failed.", "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
 
   document.getElementById("rescan").addEventListener("click", async (event) => {
     const button = event.currentTarget;

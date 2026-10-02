@@ -14,7 +14,7 @@ A local, DAKboard-style full-screen photo and video player for Home Assistant OS
 - Applies display-setting changes to an already-open screen within a few seconds.
 - Shows a DAKboard-like clock/date and optional weather data from a Home Assistant `weather.*` entity.
 - Stores settings in the app's persistent `/data` directory. Media is mounted read-only.
-- Keeps the last 20 displayed photos or videos in browser storage and restores the most recent one when the page loads. Swipe right through history and left to move forward when the page is opened as a normal interactive browser page.
+- Keeps a configurable number of displayed photos or videos in browser storage (default 20; 0 allows up to the playlist size) and restores the most recent one when the page loads. Swipe right through history and left to move forward when the page is opened as a normal interactive browser page.
 
 ## 1. Mount the Unraid SMB share in Home Assistant
 
@@ -47,7 +47,9 @@ Open the app's **Open Web UI** button, or browse to:
 
 `http://HOME_ASSISTANT_IP:8099/settings`
 
-Choose `/media/UnraidMedia` (or a folder below it), select the weather entity, set the photo/video timing, and save. Use **Open screen** to verify playback.
+Choose `/media/UnraidMedia` (or a folder below it), select the weather entity, set the photo/video timing and history size, and save. History size defaults to 20; set it to `0` for up to one full playlist of displayed items. Use **Open screen** to verify playback.
+
+The **Reset history** button schedules a one-time reset for each browser. On the tablet's next screensaver page load, it starts with the first item in its saved playlist order; playback already running is unaffected. The next items then build a new history. Browser storage must remain enabled, and **Delete Webstorage on Auto Reload** should be off.
 
 ## 4. Use it in Fully Kiosk
 
@@ -75,8 +77,8 @@ Compatibility conversion:
 
 ## Useful URLs
 
-- Screen (Contain): `http://HOME_ASSISTANT_IP:8099/?fit=contain&v=1.2.9`
-- Screen (Cover): `http://HOME_ASSISTANT_IP:8099/?fit=cover&v=1.2.9`
+- Screen (Contain): `http://HOME_ASSISTANT_IP:8099/?fit=contain&v=1.3.0`
+- Screen (Cover): `http://HOME_ASSISTANT_IP:8099/?fit=cover&v=1.3.0`
 - Settings: `http://HOME_ASSISTANT_IP:8099/settings`
 - Health check: `http://HOME_ASSISTANT_IP:8099/health`
 

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d0c">
   <title>HA Media Frame Settings</title>
-  <link rel="stylesheet" href="/settings.css?v=1.2.9">
-  <script src="/settings.js?v=1.2.9" defer></script>
+  <link rel="stylesheet" href="/settings.css?v=1.3.0">
+  <script src="/settings.js?v=1.3.0" defer></script>
 </head>
 <body>
   <main class="page-shell">
@@ -67,6 +67,17 @@
             <span><b>Shuffle playback</b><small>Turn off for alphabetical order.</small></span>
             <input name="shuffle" type="checkbox" role="switch">
           </label>
+          <label class="field">
+            <span>History size</span>
+            <div class="unit-input"><input name="history_size" type="number" min="0" max="1000000" step="1" required><b>items</b></div>
+            <small>Default 20. Set to 0 to keep up to one full playlist of displayed items.</small>
+          </label>
+          <div class="field history-reset">
+            <span>Restart from beginning</span>
+            <button id="reset-history" class="secondary" type="button">Reset history</button>
+            <small>The next time the screensaver page loads, it starts with the first playlist item.</small>
+            <small id="history-reset-status" role="status" aria-live="polite"></small>
+          </div>
         </div>
       </section>
 

@@ -24,8 +24,9 @@ STATIC_ROOT = APP_ROOT / "static"
 DATA_ROOT = Path(os.environ.get("DATA_DIR", "/data"))
 MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", "/media")).resolve()
 SETTINGS_PATH = DATA_ROOT / "settings.json"
+HISTORY_RESET_PATH = DATA_ROOT / "history_reset_generation.txt"
 PORT = int(os.environ.get("PORT", "8099"))
-VERSION = "1.2.9"
+VERSION = "1.3.0"
 
 IMAGE_EXTENSIONS = {
     ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".avif"
@@ -38,6 +39,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "photo_seconds": 30,
     "video_seconds": 30,
     "video_repeats": 3,
+    "history_size": 20,
     "shuffle": True,
     "fit": "contain",
     "transition_seconds": 1.2,
@@ -105,6 +107,7 @@ def normalize_settings(raw: Any) -> dict[str, Any]:
     settings["photo_seconds"] = int(_number(source.get("photo_seconds"), 30, 2, 86400))
     settings["video_seconds"] = int(_number(source.get("video_seconds"), 30, 0, 86400))
     settings["video_repeats"] = int(_number(source.get("video_repeats"), 3, 1, 100))
+    settings["history_size"] = int(_number(source.get("history_size"), 20, 0, 1000000))
     settings["transition_seconds"] = round(
         _number(source.get("transition_seconds"), 1.2, 0, 10), 2
     )
@@ -140,6 +143,24 @@ def save_settings(payload: Any) -> dict[str, Any]:
     with WEATHER_LOCK:
         WEATHER_CACHE.update({"key": None, "at": 0.0, "value": None})
     return settings
+
+
+def history_reset_generation() -> int:
+    with SETTINGS_LOCK:
+        try:
+            return max(0, int(HISTORY_RESET_PATH.read_text(encoding="utf-8").strip()))
+        except (FileNotFoundError, ValueError, OSError):
+            return 0
+
+
+def request_history_reset() -> int:
+    with SETTINGS_LOCK:
+        generation = history_reset_generation() + 1
+        DATA_ROOT.mkdir(parents=True, exist_ok=True)
+        temp_path = HISTORY_RESET_PATH.with_suffix(".tmp")
+        temp_path.write_text(f"{generation}\n", encoding="utf-8")
+        os.replace(temp_path, HISTORY_RESET_PATH)
+        return generation
 
 
 def discover_folders() -> list[str]:
@@ -476,7 +497,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"status": "ok", "version": VERSION})
             return
         if path == "/api/config":
-            self.send_json({"version": VERSION, "settings": load_settings()})
+            self.send_json({"version": VERSION, "settings": load_settings(),
+                            "history_reset_generation": history_reset_generation()})
             return
         if path == "/api/folders":
             self.send_json({"folders": discover_folders()})
@@ -517,6 +539,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"settings": settings, "saved": True})
             except (ValueError, json.JSONDecodeError, OSError) as exc:
                 self.send_json({"saved": False, "error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+        if path == "/api/history/reset":
+            try:
+                generation = request_history_reset()
+                self.send_json({"reset": True, "history_reset_generation": generation})
+            except OSError as exc:
+                self.send_json({"reset": False, "error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
             return
         if path == "/api/rescan":
             items, error = scan_media(force=True)

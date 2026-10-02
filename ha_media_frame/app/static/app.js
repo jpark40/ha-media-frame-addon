@@ -9,7 +9,7 @@
   const weatherPanel = document.getElementById("weather-panel");
   const forecastList = document.getElementById("forecast-list");
   const HISTORY_KEY = "haMediaFrameHistoryV1";
-  const HISTORY_LIMIT = 20;
+  const HISTORY_RESET_ACK_KEY = "haMediaFrameHistoryResetGenerationV1";
   const PLAYLIST_ORDER_KEY = "haMediaFramePlaylistOrderV1";
   let playlistOrder = null;
   const requestedFit = new URLSearchParams(window.location.search).get("fit");
@@ -374,6 +374,24 @@
     return preload;
   }
 
+  function historyLimit() {
+    const configured = Number(state.config && state.config.history_size);
+    return configured === 0 ? Math.max(1, state.playlist.length)
+      : Math.max(1, Number.isFinite(configured) ? Math.floor(configured) : 20);
+  }
+
+  function applyHistoryReset(generation) {
+    try {
+      const token = String(generation || 0);
+      if (Number(generation) > 0 && window.localStorage.getItem(HISTORY_RESET_ACK_KEY) !== token) {
+        window.localStorage.removeItem(HISTORY_KEY);
+      }
+      window.localStorage.setItem(HISTORY_RESET_ACK_KEY, token);
+    } catch {
+      // If storage is disabled, history is already unavailable.
+    }
+  }
+
   function saveHistory() {
     try {
       window.localStorage.setItem(HISTORY_KEY, JSON.stringify({
@@ -389,7 +407,7 @@
     try {
       const saved = JSON.parse(window.localStorage.getItem(HISTORY_KEY));
       if (!saved || !Array.isArray(saved.items)) return null;
-      const offset = Math.max(0, saved.items.length - HISTORY_LIMIT);
+      const offset = Math.max(0, saved.items.length - historyLimit());
       const items = saved.items.slice(offset).filter((url) => typeof url === "string" && url.length < 2048);
       const index = Number.isInteger(saved.index) ? saved.index - offset : items.length - 1;
       return { items, index };
@@ -402,7 +420,7 @@
     const byUrl = new Map(state.playlist.map((item) => [item.url, item]));
     const history = [];
     let historyIndex = -1;
-    urls.slice(-HISTORY_LIMIT).forEach((url, index) => {
+    urls.slice(-historyLimit()).forEach((url, index) => {
       const item = byUrl.get(url);
       if (!item) return;
       history.push(item);
@@ -543,7 +561,7 @@
       // Only media that reached the screen enters history.
       if (state.historyIndex < state.history.length - 1) state.history.length = state.historyIndex + 1;
       state.history.push(item);
-      if (state.history.length > HISTORY_LIMIT) state.history.shift();
+      while (state.history.length > historyLimit()) state.history.shift();
       state.historyIndex = state.history.length - 1;
     }
     saveHistory();
@@ -701,7 +719,9 @@
     updateClock();
     window.setInterval(updateClock, 1000);
     try {
-      state.config = (await getJson("/api/config")).settings;
+      const configResult = await getJson("/api/config");
+      state.config = configResult.settings;
+      applyHistoryReset(configResult.history_reset_generation);
     } catch (error) {
       setStatus(error.message || "Unable to load settings");
       return;

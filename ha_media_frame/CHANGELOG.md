@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0
+
+- Adds a square 128 px add-on icon for Home Assistant.
+- Adds configurable history size (default 20; 0 uses up to the playlist size).
+- Adds a server-backed Reset History action applied once per browser on its next page load.
+
 ## 1.2.9
 
 - Changes Shuffle to alternate groups of three newest and three oldest files by modification time.

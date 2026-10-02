@@ -33,6 +33,6 @@ If the local `/addons/ha_media_frame` copy is already installed, stop it before 
 - Shows an optional clock, date, current weather, and four-day forecast.
 - Generates ready-to-copy Fully Kiosk Screensaver Playlist JSON.
 - Persists settings across add-on upgrades.
-- Saves the last 20 displayed items and restores the most recent one after a page reload; swipe navigation works when opened as a normal interactive page.
+- Saves configurable display history (default 20; 0 allows up to the playlist size), restores the most recent item after a page reload, and provides a one-time reset button. Swipe navigation works when opened as a normal interactive page.
 
 See the [HA Media Frame documentation](ha_media_frame/README.md) for setup and usage details.
