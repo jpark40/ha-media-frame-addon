@@ -7,7 +7,7 @@
   const weatherField = document.getElementById("weather-field");
   const weatherSelect = document.getElementById("weather-entity");
   const weatherHelp = document.getElementById("weather-help");
-  const releaseVersion = "1.2.8";
+  const releaseVersion = "1.2.9";
 
   function screensaverPlaylist(fit) {
     const playlist = JSON.stringify([{

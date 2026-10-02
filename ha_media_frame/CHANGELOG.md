@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.9
+
+- Changes Shuffle to alternate groups of three newest and three oldest files by modification time.
+- Preserves that playlist across page loads and metadata changes, rebuilding it only when new files are added; removed files are omitted.
+
 ## 1.2.8
 
 - Removes the lower-left exit button and its Fully Kiosk JavaScript handler.

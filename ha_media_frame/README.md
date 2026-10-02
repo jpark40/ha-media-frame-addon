@@ -10,7 +10,7 @@ A local, DAKboard-style full-screen photo and video player for Home Assistant OS
 - Uses byte-range streaming so videos do not have to download completely before playback.
 - Offers separate photo and video durations. Set video duration to `0` to play each repeat to the end.
 - Repeats each video three times by default, with an adjustable total play count from 1 to 100.
-- Supports shuffle or alphabetical order, `contain` or `cover`, fade duration, and automatic rescanning.
+- With Shuffle enabled, plays three newest files, three oldest, then the next three newest and next three oldest until every item is included. The order is saved across page loads and only rebuilt when new files appear; otherwise alphabetical order is available. Also supports `contain` or `cover`, fade duration, and automatic rescanning.
 - Applies display-setting changes to an already-open screen within a few seconds.
 - Shows a DAKboard-like clock/date and optional weather data from a Home Assistant `weather.*` entity.
 - Stores settings in the app's persistent `/data` directory. Media is mounted read-only.
@@ -75,8 +75,8 @@ Compatibility conversion:
 
 ## Useful URLs
 
-- Screen (Contain): `http://HOME_ASSISTANT_IP:8099/?fit=contain&v=1.2.8`
-- Screen (Cover): `http://HOME_ASSISTANT_IP:8099/?fit=cover&v=1.2.8`
+- Screen (Contain): `http://HOME_ASSISTANT_IP:8099/?fit=contain&v=1.2.9`
+- Screen (Cover): `http://HOME_ASSISTANT_IP:8099/?fit=cover&v=1.2.9`
 - Settings: `http://HOME_ASSISTANT_IP:8099/settings`
 - Health check: `http://HOME_ASSISTANT_IP:8099/health`
 

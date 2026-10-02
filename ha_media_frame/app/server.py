@@ -25,7 +25,7 @@ DATA_ROOT = Path(os.environ.get("DATA_DIR", "/data"))
 MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", "/media")).resolve()
 SETTINGS_PATH = DATA_ROOT / "settings.json"
 PORT = int(os.environ.get("PORT", "8099"))
-VERSION = "1.2.8"
+VERSION = "1.2.9"
 
 IMAGE_EXTENSIONS = {
     ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".avif"

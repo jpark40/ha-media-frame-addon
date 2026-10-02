@@ -10,6 +10,8 @@
   const forecastList = document.getElementById("forecast-list");
   const HISTORY_KEY = "haMediaFrameHistoryV1";
   const HISTORY_LIMIT = 20;
+  const PLAYLIST_ORDER_KEY = "haMediaFramePlaylistOrderV1";
+  let playlistOrder = null;
   const requestedFit = new URLSearchParams(window.location.search).get("fit");
   const fitOverride = requestedFit === "contain" || requestedFit === "cover" ? requestedFit : "";
 
@@ -47,12 +49,51 @@
   }
 
   function shuffle(items) {
-    const copy = items.slice();
-    for (let i = copy.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
+    const byUrl = new Map(items.map((item) => [item.url, item]));
+    if (playlistOrder === null) {
+      try {
+        const saved = JSON.parse(window.localStorage.getItem(PLAYLIST_ORDER_KEY));
+        playlistOrder = Array.isArray(saved) && saved.every((url) => typeof url === "string")
+          ? saved
+          : [];
+      } catch {
+        playlistOrder = [];
+      }
     }
-    return copy;
+
+    const known = new Set(playlistOrder);
+    const hasNewFiles = items.some((item) => !known.has(item.url));
+    if (playlistOrder.length && !hasNewFiles) {
+      // File metadata changes keep the established order; removed files are omitted.
+      playlistOrder = playlistOrder.filter((url) => byUrl.has(url));
+    } else {
+      // Newest three, oldest three, then move inward three at a time.
+      const sorted = items.slice().sort((a, b) => {
+        const difference = Number(b.modified) - Number(a.modified);
+        if (difference) return difference;
+        const left = a.url.toLowerCase();
+        const right = b.url.toLowerCase();
+        return left < right ? -1 : left > right ? 1 : a.url < b.url ? -1 : a.url > b.url ? 1 : 0;
+      });
+      playlistOrder = [];
+      let newest = 0;
+      let oldest = sorted.length - 1;
+      while (newest <= oldest) {
+        for (let count = 0; count < 3 && newest <= oldest; count += 1) {
+          playlistOrder.push(sorted[newest++].url);
+        }
+        for (let count = 0; count < 3 && newest <= oldest; count += 1) {
+          playlistOrder.push(sorted[oldest--].url);
+        }
+      }
+    }
+
+    try {
+      window.localStorage.setItem(PLAYLIST_ORDER_KEY, JSON.stringify(playlistOrder));
+    } catch {
+      // Keep the order in memory if browser storage is unavailable.
+    }
+    return playlistOrder.map((url) => byUrl.get(url));
   }
 
   function updateClock() {
